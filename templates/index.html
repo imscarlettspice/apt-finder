@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Columbia City Apartment Finder</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  ::selection { background: #e8533f44; }
+  body { font-family: 'Instrument Sans', -apple-system, sans-serif; background: #0c0c0e; color: #e2e8f0; min-height: 100vh; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .card { animation: fadeUp .35s ease both; }
+  .card:nth-child(2) { animation-delay: .04s; }
+  .card:nth-child(3) { animation-delay: .08s; }
+  .card:nth-child(4) { animation-delay: .12s; }
+  .card:nth-child(5) { animation-delay: .16s; }
+
+  header { background: linear-gradient(180deg, #141418, #0c0c0e); border-bottom: 1px solid #1e1e24; padding: 28px 32px 20px; }
+  .header-row { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; }
+  h1 { font-family: 'Fraunces', Georgia, serif; font-size: 32px; font-weight: 900; color: #f8fafc; letter-spacing: -1px; line-height: 1.1; }
+  .subtitle { font-size: 14px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+  .criteria { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .tag { background: #1a1a22; border: 1px solid #2a2a34; color: #94a3b8; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+  .refresh-btn { background: #e8533f; color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .2s; }
+  .refresh-btn:disabled { opacity: .6; cursor: not-allowed; }
+  .refresh-btn:hover:not(:disabled) { opacity: .9; }
+  .refresh-banner { max-width: 1200px; margin: 12px auto 0; background: #1a1a22; border: 1px solid #2a2a34; border-radius: 8px; padding: 10px 16px; font-size: 13px; color: #94a3b8; display: none; }
+  .refresh-banner.visible { display: block; }
+
+  .stats-row { max-width: 1200px; margin: 24px auto 0; padding: 0 32px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .stat-card { flex: 1 1 140px; background: #141418; border: 1px solid #1e1e24; border-radius: 10px; padding: 16px 20px; }
+  .stat-value { font-size: 28px; font-weight: 700; font-family: 'Fraunces', serif; }
+  .stat-label { font-size: 12px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+
+  .filter-bar { max-width: 1200px; margin: 20px auto 0; padding: 0 32px; display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .5px; }
+  select, .filter-btn { background: #141418; border: 1px solid #2a2a34; color: #e2e8f0; border-radius: 8px; padding: 8px 12px; font-size: 13px; font-family: inherit; cursor: pointer; min-width: 140px; }
+  select:focus { outline: 2px solid #e8533f; outline-offset: -1px; }
+  .filter-btn { color: #64748b; min-width: auto; padding: 8px 16px; }
+  .filter-btn.active { background: #2a2208; border-color: #fbbf24; color: #fbbf24; }
+  .ml-auto { margin-left: auto; }
+
+  .log-panel { max-width: 1200px; margin: 16px 32px 0; background: #111116; border-radius: 12px; border: 1px solid #1e1e24; padding: 20px; display: none; }
+  .log-panel.visible { display: block; }
+  .log-panel h3 { color: #e2e8f0; font-size: 14px; margin-bottom: 12px; }
+  .log-entry { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #1a1a22; font-size: 13px; }
+  .log-ok { color: #4ade80; } .log-err { color: #f87171; }
+  .log-source { color: #94a3b8; min-width: 120px; }
+  .log-detail { color: #64748b; flex: 1; }
+  .log-time { color: #475569; font-size: 12px; }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 32px 60px; }
+  .result-count { font-size: 13px; color: #64748b; margin-bottom: 16px; text-transform: uppercase; letter-spacing: .5px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .card { background: #141418; border: 1px solid #1e1e24; border-radius: 12px; padding: 20px; transition: border-color .2s; }
+  .card:hover { border-color: #2a2a34; }
+  .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .card-source { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: .5px; }
+  .source-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .card-actions { display: flex; gap: 4px; }
+  .icon-btn { background: none; border: none; font-size: 18px; cursor: pointer; padding: 2px 6px; border-radius: 4px; color: #475569; }
+  .icon-btn:hover { color: #94a3b8; }
+  .icon-btn.fav-on { color: #fbbf24; }
+  .card-name { font-size: 17px; font-weight: 700; color: #f8fafc; line-height: 1.3; margin-bottom: 4px; }
+  .card-addr { font-size: 13px; color: #64748b; margin-bottom: 12px; }
+  .card-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+  .price-box { font-size: 24px; font-weight: 700; color: #e8533f; font-family: 'Fraunces', serif; }
+  .per-mo { font-size: 13px; font-weight: 400; color: #64748b; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { background: #1a1a22; border: 1px solid #2a2a34; padding: 3px 10px; border-radius: 6px; font-size: 12px; color: #94a3b8; }
+  .avail { font-size: 13px; color: #4ade80; margin-bottom: 10px; }
+  .view-link { display: inline-block; font-size: 13px; font-weight: 600; color: #e8533f; text-decoration: none; padding: 6px 0; border-top: 1px solid #1e1e24; width: 100%; margin-top: 4px; }
+  .view-link:hover { color: #f87171; }
+
+  .expanded { margin-top: 12px; padding-top: 12px; border-top: 1px solid #1e1e24; display: none; }
+  .expanded.open { display: block; }
+  .desc-text { font-size: 13px; color: #94a3b8; line-height: 1.6; margin-bottom: 10px; }
+  .meta-line { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+  .expanded textarea { width: 100%; background: #0c0c0e; border: 1px solid #2a2a34; color: #e2e8f0; border-radius: 8px; padding: 10px; font-size: 13px; font-family: inherit; min-height: 60px; resize: vertical; margin-top: 4px; }
+  .expanded textarea:focus { outline: 2px solid #e8533f; outline-offset: -1px; }
+  .expanded select { width: 100%; margin-top: 4px; }
+  .delete-btn { margin-top: 12px; background: none; border: 1px solid #3f1518; color: #f87171; border-radius: 6px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .delete-btn:hover { background: #1c1012; }
+
+  .empty { text-align: center; padding: 80px 0; }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty h3 { color: #e2e8f0; margin-bottom: 8px; }
+  .empty p { color: #64748b; max-width: 400px; margin: 0 auto; line-height: 1.6; }
+
+  footer { text-align: center; padding: 24px; font-size: 12px; color: #475569; border-top: 1px solid #1e1e24; }
+
+  @media (max-width: 600px) {
+    header { padding: 20px 16px; }
+    h1 { font-size: 24px; }
+    .stats-row, .filter-bar, main { padding-left: 16px; padding-right: 16px; }
+    .grid { grid-template-columns: 1fr; }
+    .stat-card { flex: 1 1 100px; padding: 12px; }
+    .stat-value { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <div>
+      <h1>Columbia City</h1>
+      <p class="subtitle">Apartment Database</p>
+    </div>
+    <div class="header-right">
+      <div class="criteria">
+        <span class="tag">$1,600–$1,799</span>
+        <span class="tag">401+ sqft</span>
+        <span class="tag">Studio / 1BR</span>
+        <span class="tag">May 2026</span>
+      </div>
+      <button class="refresh-btn" id="refreshBtn" onclick="triggerRefresh()">⟳ Refresh All</button>
+    </div>
+  </div>
+  <div class="refresh-banner" id="refreshBanner"></div>
+</header>
+
+<div class="stats-row" id="statsRow"></div>
+
+<div class="filter-bar">
+  <div class="filter-group">
+    <label class="filter-label">Status</label>
+    <select id="filterStatus" onchange="loadListings()">
+      <option value="active">Active</option>
+      <option value="all">All</option>
+      <option value="stale">Stale</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">Source</label>
+    <select id="filterSource" onchange="loadListings()">
+      <option value="">All Sources</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">Sort</label>
+    <select id="filterSort" onchange="loadListings()">
+      <option value="price_asc">Price: Low → High</option>
+      <option value="price_desc">Price: High → Low</option>
+      <option value="sqft_desc">Largest First</option>
+      <option value="newest">Newest First</option>
+      <option value="source">By Source</option>
+    </select>
+  </div>
+  <button class="filter-btn" id="favBtn" onclick="toggleFavFilter()">☆ Favorites</button>
+  <a class="filter-btn ml-auto" href="/api/export" download>↓ CSV</a>
+  <button class="filter-btn" id="logBtn" onclick="toggleLog()">Scrape Log</button>
+</div>
+
+<div class="log-panel" id="logPanel"></div>
+
+<main id="main">
+  <div class="empty">
+    <div class="empty-icon">⟳</div>
+    <h3>Loading...</h3>
+  </div>
+</main>
+
+<footer>Columbia City Apartment Finder · Data refreshes on demand</footer>
+
+<script>
+const API = '';  // same origin
+let favOnly = false;
+let allListings = [];
+
+const sourceColors = {
+  'Zillow': '#1277e1', 'Apartments.com': '#4ade80', 'Craigslist': '#a855f7',
+  'Redfin': '#ef4444', 'HotPads': '#f97316', 'Rent.com': '#3b82f6',
+};
+
+async function loadListings() {
+  const status = document.getElementById('filterStatus').value;
+  const source = document.getElementById('filterSource').value;
+  const sort = document.getElementById('filterSort').value;
+  const params = new URLSearchParams({ status, sort });
+  if (source) params.set('source', source);
+  if (favOnly) params.set('favorites', 'true');
+
+  try {
+    const res = await fetch(`${API}/api/listings?${params}`);
+    const data = await res.json();
+    allListings = data.listings || [];
+    renderListings();
+    updateSourceFilter();
+  } catch (e) {
+    document.getElementById('main').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">⚠️</div>
+        <h3>Cannot connect</h3>
+        <p>Make sure the server is running.</p>
+      </div>`;
+  }
+}
+
+function renderListings() {
+  const main = document.getElementById('main');
+  if (allListings.length === 0) {
+    main.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🏘️</div>
+        <h3>No listings found</h3>
+        <p>Hit "Refresh All" to scrape Zillow, Apartments.com, Craigslist, Redfin, and HotPads.</p>
+      </div>`;
+    return;
+  }
+
+  let html = `<div class="result-count">${allListings.length} listing${allListings.length !== 1 ? 's' : ''}</div><div class="grid">`;
+  for (const l of allListings) {
+    const color = sourceColors[l.source] || '#64748b';
+    const price = l.price ? `$${l.price.toLocaleString()}` : 'Price N/A';
+    html += `
+    <div class="card" id="card-${l.id}">
+      <div class="card-top">
+        <div class="card-source"><span class="source-dot" style="background:${color}"></span>${l.source}</div>
+        <div class="card-actions">
+          <button class="icon-btn ${l.favorite ? 'fav-on' : ''}" onclick="toggleFav('${l.id}',${l.favorite})">${l.favorite ? '★' : '☆'}</button>
+          <button class="icon-btn" onclick="toggleExpand('${l.id}')">⋯</button>
+        </div>
+      </div>
+      <div class="card-name">${esc(l.name || 'Unnamed Listing')}</div>
+      ${l.address ? `<div class="card-addr">${esc(l.address)}</div>` : ''}
+      <div class="card-meta">
+        <div class="price-box">${price}<span class="per-mo">/mo</span></div>
+        <div class="chips">
+          ${l.sqft ? `<span class="chip">${l.sqft.toLocaleString()} sqft</span>` : ''}
+          ${l.bedrooms ? `<span class="chip">${esc(l.bedrooms)}</span>` : ''}
+          ${l.bathrooms ? `<span class="chip">${esc(l.bathrooms)} ba</span>` : ''}
+        </div>
+      </div>
+      ${l.available_date ? `<div class="avail">Available: ${esc(l.available_date)}</div>` : ''}
+      ${l.url ? `<a class="view-link" href="${esc(l.url)}" target="_blank" rel="noopener">View Listing ↗</a>` : ''}
+      <div class="expanded" id="exp-${l.id}">
+        ${l.description ? `<p class="desc-text">${esc(l.description.substring(0, 300))}</p>` : ''}
+        ${l.amenities ? `<p class="meta-line">Amenities: ${esc(l.amenities)}</p>` : ''}
+        ${l.pet_policy ? `<p class="meta-line">Pets: ${esc(l.pet_policy)}</p>` : ''}
+        <p class="meta-line">First seen: ${l.first_seen ? new Date(l.first_seen).toLocaleDateString() : '—'}</p>
+        <p class="meta-line">Last seen: ${l.last_seen ? new Date(l.last_seen).toLocaleDateString() : '—'}</p>
+        <div style="margin-top:12px">
+          <label class="filter-label">Status</label>
+          <select onchange="updateStatus('${l.id}', this.value)">
+            ${['active','contacted','toured','applied','rejected','stale'].map(s =>
+              `<option value="${s}" ${l.status===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div style="margin-top:10px">
+          <label class="filter-label">Notes</label>
+          <textarea placeholder="Your notes..." onblur="updateNotes('${l.id}', this.value)">${esc(l.notes || '')}</textarea>
+        </div>
+        <button class="delete-btn" onclick="deleteListing('${l.id}')">Remove Listing</button>
+      </div>
+    </div>`;
+  }
+  html += '</div>';
+  main.innerHTML = html;
+}
+
+function updateSourceFilter() {
+  const sel = document.getElementById('filterSource');
+  const current = sel.value;
+  const sources = [...new Set(allListings.map(l => l.source))].sort();
+  sel.innerHTML = '<option value="">All Sources</option>' +
+    sources.map(s => `<option value="${s}" ${s===current?'selected':''}>${s}</option>`).join('');
+}
+
+async function loadStats() {
+  try {
+    const res = await fetch(`${API}/api/stats`);
+    const s = await res.json();
+    document.getElementById('statsRow').innerHTML = [
+      { label: 'Active Listings', value: s.total_active, color: '#e8533f' },
+      { label: 'Avg Rent', value: s.price?.avg ? `$${s.price.avg.toLocaleString()}` : '—', color: '#4ade80' },
+      { label: 'Sources', value: Object.keys(s.by_source || {}).length, color: '#60a5fa' },
+      { label: 'Favorites', value: s.favorites, color: '#fbbf24' },
+      { label: 'Last Scrape', value: s.last_scrape ? new Date(s.last_scrape).toLocaleDateString() : 'Never', color: '#94a3b8' },
+    ].map(c => `
+      <div class="stat-card">
+        <div class="stat-value" style="color:${c.color}">${c.value}</div>
+        <div class="stat-label">${c.label}</div>
+      </div>`).join('');
+  } catch {}
+}
+
+async function triggerRefresh() {
+  const btn = document.getElementById('refreshBtn');
+  const banner = document.getElementById('refreshBanner');
+  btn.disabled = true;
+  btn.textContent = '⟳ Scraping...';
+  banner.classList.add('visible');
+  banner.innerHTML = '<span style="animation:pulse 1.5s infinite">●</span> Scraping all sources...';
+
+  try {
+    await fetch(`${API}/api/refresh`, { method: 'POST' });
+    const poll = setInterval(async () => {
+      const res = await fetch(`${API}/api/refresh/status`);
+      const s = await res.json();
+      banner.innerHTML = s.running
+        ? `<span style="animation:pulse 1.5s infinite">●</span> ${s.message}`
+        : `✓ ${s.message}`;
+      if (!s.running) {
+        clearInterval(poll);
+        btn.disabled = false;
+        btn.textContent = '⟳ Refresh All';
+        loadListings();
+        loadStats();
+        setTimeout(() => banner.classList.remove('visible'), 5000);
+      }
+    }, 2000);
+  } catch {
+    banner.innerHTML = '✗ Failed to start scrape';
+    btn.disabled = false;
+    btn.textContent = '⟳ Refresh All';
+  }
+}
+
+async function toggleFav(id, current) {
+  await fetch(`${API}/api/listings/${id}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ favorite: current ? 0 : 1 })
+  });
+  loadListings(); loadStats();
+}
+
+function toggleFavFilter() {
+  favOnly = !favOnly;
+  const btn = document.getElementById('favBtn');
+  btn.className = favOnly ? 'filter-btn active' : 'filter-btn';
+  btn.textContent = favOnly ? '★ Favorites' : '☆ Favorites';
+  loadListings();
+}
+
+function toggleExpand(id) {
+  const el = document.getElementById(`exp-${id}`);
+  el.classList.toggle('open');
+}
+
+async function updateStatus(id, status) {
+  await fetch(`${API}/api/listings/${id}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  });
+}
+
+async function updateNotes(id, notes) {
+  await fetch(`${API}/api/listings/${id}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notes })
+  });
+}
+
+async function deleteListing(id) {
+  if (!confirm('Remove this listing?')) return;
+  await fetch(`${API}/api/listings/${id}`, { method: 'DELETE' });
+  loadListings(); loadStats();
+}
+
+async function toggleLog() {
+  const panel = document.getElementById('logPanel');
+  const showing = panel.classList.toggle('visible');
+  if (!showing) return;
+  try {
+    const res = await fetch(`${API}/api/scrape-log`);
+    const entries = await res.json();
+    panel.innerHTML = '<h3>Recent Scrape History</h3>' +
+      (entries.length === 0 ? '<p style="color:#64748b;font-size:13px">No history yet. Hit "Refresh All" to run your first scrape.</p>' :
+      entries.map(e => `
+        <div class="log-entry">
+          <span class="${e.error ? 'log-err' : 'log-ok'}">${e.error ? '✗' : '✓'}</span>
+          <span class="log-source">${e.source}</span>
+          <span class="log-detail">${e.listings_found} found → ${e.listings_matched} matched</span>
+          <span class="log-time">${new Date(e.timestamp).toLocaleString()}</span>
+        </div>`).join(''));
+  } catch {}
+}
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// Init
+loadListings();
+loadStats();
+</script>
+</body>
+</html>
